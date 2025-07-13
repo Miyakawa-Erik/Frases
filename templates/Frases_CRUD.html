@@ -1,0 +1,52 @@
+<h1 class="titulo-modal">{% block title %}{{ title }}{% endblock %}</h1>
+<small>.</small>
+<form action="{{ action_url }}" method="post" class="ajax-submit">
+    <button type="button" class="cerrar" title="Cerrar">&times;</button>
+    <label for="frase">Frase</label><textarea id="frase" name="frase" required rows="1">{{ frase.Frase if frase }}</textarea>
+    <label for="significado">Significado</label><textarea id="significado" name="significado" rows="1">{{ frase.Significado if frase }}</textarea>
+    <div class="grid">
+        <label for="tema_x">Tema
+            <select id="tema_x" name="tema_x" required
+                data-parent-dropdown 
+                data-child-dropdown="#subtema_x"
+                data-api-url="/api/subtemas/{id}">
+               <option value="">-- Selecciona --</option>
+                {% for tema in temas %}<option value="{{ tema.X }}" {% if frase and frase.Tema_x == tema.X %}selected{% endif %}>{{ tema.Nombre }}</option>{% endfor %}
+            </select>
+        </label>
+        <label for="subtema_x">Subtema
+            <select id="subtema_x" name="subtema_x" required>
+                <option value="">-- Elige un tema primero --</option>
+                {% if subtemas %}{% for subtema in subtemas %}<option value="{{ subtema.X }}" {% if frase and frase.Subtema_x == subtema.X %}selected{% endif %}>{{ subtema.Nombre }}</option>{% endfor %}{% endif %}
+            </select>
+        </label>
+    </div>
+    <div class="grid">
+        <label for="autor_x">Autor
+            <select id="autor_x" name="autor_x" required>
+                <option value="">-- Selecciona --</option>
+                {% for autor in autores %}<option value="{{ autor.X }}" {% if frase and frase.Autor_x == autor.X %}selected{% endif %}>{{ autor.Nombre }}</option>{% endfor %}
+            </select>
+        </label>
+        <label for="tipo_x">Tipo
+            <select id="tipo_x" name="tipo_x" required>
+                <option value="">-- Selecciona --</option>
+                {% for tipo in tipos %}<option value="{{ tipo.X }}" {% if frase and frase.Tipo_x == tipo.X %}selected{% endif %}>{{ tipo.Nombre }}</option>{% endfor %}
+            </select>
+        </label>
+    </div>
+    <div class="grid">
+        <fieldset>
+            <legend>Opciones</legend>
+            <label for="favorito">
+                <input type="checkbox" id="favorito" name="favorito" value="SI" {% if frase and frase.Favorito == "SI" %}checked{% endif %}>
+                Favorito
+            </label>
+            <label for="divertido">
+                <input type="checkbox" id="divertido" name="divertido" value="SI" {% if frase and frase.Divertido == "SI" %}checked{% endif %}>
+                Divertido
+            </label>
+        </fieldset>
+    </div>
+    <button type="submit">Guardar Cambios</button>
+</form>

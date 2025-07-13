@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h2>Acceso</h2>
+    <p>Ingresa la clave para continuar</p>
+</hgroup>
+
+<form method="post" action="{{ url_for('login') }}">
+    <label for="clave">
+        Clave de acceso
+        <input type="password" name="clave" id="clave" required>
+    </label>
+
+    <button type="submit">Entrar</button>
+</form>
+{% endblock %}

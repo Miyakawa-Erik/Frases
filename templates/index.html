@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+
+<div class="search-bar">
+          <form id="busquedaForm" method="get" action="{{ url_for('index') }}">
+            <div class="search-input-group">
+                <input type="search" id="campoBusqueda" name="q" placeholder="Buscar por contenido de la frase..." value="{{ search_values.get('q', '') }}">
+            </div>
+            <div class="search-actions">
+                <button type="submit" data-tooltip="Buscar texto" title="Buscar"><i data-lucide="search"></i></button>
+                <button type="button" class="modal-trigger" data-static-target="#advanced-search-content" data-tooltip="Búsqueda avanzada" title="Búsqueda avanzada">
+                    <i data-lucide="text-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="advanced-search-content" style="display: none;">
+        <button class="cerrar" type="button">&times;</button>
+        <h1 class="titulo-modal">Selecciona uno o o más filtros:</h1>
+        <small>.</small>
+        <form id="advanced-search-form" method="get" action="{{ url_for('index') }}">
+            <div class="grid">
+                <label for="modal_tema">Tema
+                    <select id="modal_tema" name="tema" data-parent-dropdown data-child-dropdown="#modal_subtema" data-api-url="/api/subtemas/{id}">
+                        <option value="">-- Todos --</option>
+                        {% for tema in temas %}<option value="{{ tema.X }}" {% if search_values.get('tema') == tema.X|string %}selected{% endif %}>{{ tema.Nombre }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label for="modal_subtema">Subtema
+                    <select id="modal_subtema" name="subtema">
+                        <option value="">-- Elige un tema primero --</option>
+                        {% if subtemas %}{% for subtema in subtemas %}<option value="{{ subtema.X }}" {% if search_values.get('subtema') == subtema.X|string %}selected{% endif %}>{{ subtema.Nombre }}</option>{% endfor %}{% endif %}
+                    </select>
+                </label>
+            </div>
+            <div class="grid">
+                <label for="modal_autor">Autor
+                    <select id="modal_autor" name="autor">
+                        <option value="">-- Todos --</option>
+                        {% for autor in autores %}<option value="{{ autor.X }}" {% if search_values.get('autor') == autor.X|string %}selected{% endif %}>{{ autor.Nombre }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label for="modal_tipo">Tipo
+                    <select id="modal_tipo" name="tipo">
+                        <option value="">-- Todos --</option>
+                        {% for tipo in tipos %}<option value="{{ tipo.X }}" {% if search_values.get('tipo') == tipo.X|string %}selected{% endif %}>{{ tipo.Nombre }}</option>{% endfor %}
+                    </select>
+                </label>
+            </div>
+            <button type="submit">Aplicar Filtros</button>
+        </form>
+    </div>
+
+<div class="scroll-container">
+
+    {% if search_summary %}
+        <h3 class="search-summary">
+            {{ search_summary }} - <span>{{ total_frases }} frase(s) encontrada(s)</span>
+        </h3>
+    {% endif %}
+
+    {% if frases %}
+{% for frase in frases %}
+    <article class="scroll-card" 
+             data-frase="{{ frase.Frase }}" 
+             data-autor="{{ frase.Autor }}"
+             data-significado="{{ frase.Significado }}"
+             data-divertido="{{ frase.Divertido }}">
+        
+        <div class="card-header">
+            <blockquote>“{{ frase.Frase }}”<footer>— {{ frase.Autor }}</footer></blockquote>
+            {% if session['user_role'] == 'admin' %}
+                <div class="edit-buttons">
+                     <button class="icon-button modal-trigger" data-url="{{ url_for('edit_frase_content', id=frase.X) }}" title="Editar"><i data-lucide="edit"></i></button>
+                     <form action="{{ url_for('delete_frase', id=frase.X) }}" method="post" onsubmit="return confirm('¿Eliminar esta frase?');"><button type="submit" class="icon-button" title="Eliminar"><i data-lucide="trash-2"></i></button></form>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card-actions">
+            <button class="icon-button download-btn" title="Descargar Imagen"><i data-lucide="image-down"></i></button>
+            <button class="icon-button share-btn" title="Compartir"><i data-lucide="share-2"></i></button>
+            <button class="icon-button info-btn" title="Información"><i data-lucide="info"></i></button>
+        </div>
+
+        <div class="info-content">
+            <h4>Significado</h4>
+            <p>{{ frase.Significado or 'No hay un significado disponible.' }}</p>
+            <hr>
+            <small>
+                Autor: 
+                <a href="https://es.wikipedia.org/wiki/Special:Search?search={{ frase.Autor|urlencode }}" target="_blank">
+                    #{{ frase.Autor.replace(' ', '') }}
+                </a>
+            </small>
+        </div>
+
+    </article>
+    {% endfor %}
+
+
+    {% else %}
+        {% if frase_del_dia %}
+        <article class="card-del-dia">
+            <h4>Frase del día</h4>
+            <div class="card-header">
+                <blockquote>
+                    “{{ frase_del_dia.Frase }}”
+                    <footer>— {{ frase_del_dia.Autor }}</footer>
+                </blockquote>
+                {% if frase_del_dia.Favorito == 'SI' %}
+                    <div class="favorito-indicator" title="Favorita">
+                        <i data-lucide="star"></i>
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+        {% else %}
+            <article><h2>No hay frases en la base de datos. ¡Agrega la primera!</h2></article>
+        {% endif %}
+    {% endif %}
+    <div id="image-render-template" aria-hidden="true">
+        <p class="frase-render"></p>
+        <footer class="autor-render"></footer>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,334 @@
+/* 1. GLOBALES Y ESTRUCTURA */
+*, *::before, *::after { box-sizing: border-box; } 
+    /* Previene problemas con los anchos y altos de los elementos */
+:root {
+    --header-height: 60px;
+    --search-bar-height: 75px;
+}
+body { background-color: #f4f5f7; }
+main.container { margin-top: calc(var(--header-height) + var(--search-bar-height)); padding-top: 1rem; }
+    /* El margen ahora lo aplica el <main>, es más estable que aplicar padding al <body> */
+
+/* 2. PRIMERA BARRA FIJA: TÍTULO Y NAVEGACIÓN */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1.5rem;
+    background-color: white;
+    border-bottom: 1px solid #e0e0e0;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: var(--header-height);
+    z-index: 1010;
+}
+.app-header .titulo { margin: 0; color: var(--pico-primary) }
+.app-header .header-nav ul { margin: 0; padding: 0; list-style: none; display: flex; align-items: center; gap: 0.5rem; }
+.app-header .header-nav a { color: var(--pico-primary); padding: 0.5rem; transition: color 0.2s; }
+.app-header .header-nav a:hover { color: var(--pico-secondary-foreground); }
+
+/* .app-header .titulo { font-size: 1.5rem; margin: 0; color:  rgb(31, 145, 226);}
+.app-header .header-nav ul { margin: 0; padding: 0; list-style: none; display: flex; color: rgb(31, 145, 226);align-items: center; gap: 0.5rem; }
+.app-header .header-nav a { color: var(--pico-secondary-foreground); padding: 0.5rem; } */
+
+/* 3. SEGUNDA BARRA FIJA: BÚSQUEDA RÁPIDA */
+.search-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    width: 100%;
+    height: var(--search-bar-height);
+    padding: 0 1.5rem;
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border-bottom: 1px solid #e0e0e0;
+    z-index: 1000;
+    /* background: rgba(248, 249, 250, 0.95); (Fondo ligeramente traslúcido) */
+    /* backdrop-filter: blur(5px); (Efecto "cristal esmerilado" moderno) */
+    /* transition: height 0.3s ease; (Transición suave) */
+}
+.search-bar form { display: contents; }
+.search-input-group { flex-grow: 1; }
+.search-actions { display: flex; gap: 0.5rem; flex-shrink: 0; } 
+.search-actions button, .search-actions a {
+    background: none; border: none;
+    padding: 0.5rem;
+    color: var(--pico-secondary-foreground);
+    transition: color 0.2s;
+    cursor: pointer;
+}
+.search-actions button:hover, .search-actions a:hover { color: var(--pico-primary); }
+
+/* 4. TARJETAS DE RESULTADOS: CONTENIDO DESPLAZABLE */
+.scroll-container { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem 0; }
+
+.scroll-card {
+    display: flex; flex-direction: column; /* Apilamos el contenido y las acciones */
+    gap: 1rem;
+    background: var(--pico-card-background-color);
+    padding: 1.5rem;
+    border-radius: var(--pico-border-radius);
+    border: 1px solid var(--pico-muted-border-color);
+    /* justify-content: space-between; */
+    /* align-items: center; */
+  }
+.scroll-card blockquote {flex-grow: 1; margin: 0;}
+
+.card-header { /* Contenedor para la Frase y los botones de editar/eliminar */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+}
+.card-header blockquote { flex-grow: 1; margin: 0; }
+.card-header .edit-buttons { display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 1rem; }
+
+.card-actions { /* Contenedor para los iconos de la frase */
+    display: flex; justify-content: flex-start; /* Alineados a la izquierda */
+    gap: 1.5rem;
+    width: 100%;
+    padding-top: 1rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+}
+
+/* 5. ICONOS Y BOTONES                */
+.scroll-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+     /* Estilo base para TODOS los botones con íconos */
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--pico-primary);
+    cursor: pointer;
+    transition: color 0.2s ease;
+     /* background: transparent;  Fondo transparente por defecto 
+        border-radius: 50%;
+        width: 16px;
+        height: 16px; 
+    .alerta { padding: 1rem; border-left: 5px solid; margin-bottom: 1rem; } */
+}
+.icon-button:hover { color: var(--pico-secondary-foreground); }
+
+/* 5. MODAL GENERICO */
+
+.modal {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000; /* Por encima de todo */
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;}
+.modal.visible { opacity: 1; visibility: visible; }
+.modal.oculto { display: none; }
+.modal-content {
+    background: white; padding: 2rem; border-radius: 0.5rem;
+    max-width: 700px; width: 90%;
+    max-height: 90vh; overflow-y: auto; /* Permite scroll si el contenido es largo */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;}
+.modal-content .cerrar {
+    position: absolute; top: 0.5rem; right: 0.75rem;
+    font-size: 2rem; color: var(--pico-muted-foreground);
+    cursor: pointer;
+    background: none; border: none;
+    line-height: 1;}
+.titulo-modal {
+    font-size: 1rem; margin: 0; color: var(--pico-primary);}
+/* En static/css/style.css, puedes añadirlo al final */
+
+.lookup-list, #subtemas-list-manage {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.lookup-list li, #subtemas-list-manage li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.lookup-list li:last-child, #subtemas-list-manage li:last-child {
+    border-bottom: none;
+}
+
+/* En static/css/style.css */
+
+.search-summary {
+    text-align: center;
+    color: var(--pico-muted-foreground-color);
+    font-weight: normal;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+.search-summary span {
+    font-weight: bold;
+    color: var(--pico-primary);
+}
+
+.card-del-dia {
+    border: 2px solid var(--pico-primary-background);
+    background-color: var(--pico-card-background-color);
+    padding: 2rem;
+    border-radius: var(--pico-border-radius);
+    margin-top: 2rem;
+}
+.card-del-dia h4 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--pico-primary);
+}
+.favorito-indicator {
+    color: #ffc107; /* Color dorado para la estrella */
+    margin-left: 1.5rem;
+}
+
+.loading, .no-data, .error {
+    padding: 20px;
+    text-align: center;
+    font-style: italic;
+    color: #666;
+}
+
+.error {
+    color: #d32f2f;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.data-table th {
+    background-color: #f5f5f5;
+    text-align: left;
+    padding: 12px 15px;
+    font-weight: 600;
+}
+
+.data-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit, .btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    padding: 5px;
+}
+
+.btn-edit:hover {
+    color: #1976d2;
+}
+
+.btn-delete:hover {
+    color: #d32f2f;
+}
+/* En static/css/style.css */
+
+/* --- Estilos para el panel de información desplegable --- */
+.info-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-out;
+    border-top: 1px solid transparent;
+    margin-top: 0;
+}
+.info-content.visible {
+    max-height: 500px; /* Un valor alto para permitir que el contenido se expanda */
+    transition: max-height 0.5s ease-in;
+    border-top-color: var(--pico-muted-border-color);
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+.info-content h4 {
+    margin-top: 0;
+}
+
+/* --- Estilos para la plantilla oculta de generación de imagen --- */
+#image-render-template {
+    /* Oculto, pero posicionado para que html2canvas lo pueda renderizar */
+    position: absolute;
+    top: -9999px;
+    left: 0;
+    
+    /* Diseño de la imagen */
+    width: 500px;
+    padding: 30px;
+    font-family: 'Georgia', serif;
+    color: #111;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+#image-render-template .frase-render {
+    font-size: 28px;
+    line-height: 1.4;
+    text-align: center;
+    margin-bottom: 25px;
+}
+#image-render-template .autor-render {
+    font-size: 20px;
+    font-style: italic;
+    text-align: right;
+    color: #444;
+}
+
+/* In static/css/style.css */
+
+/* Estilos para la fila de gestión de subtemas */
+.subtheme-row {
+    display: none; /* Oculto por defecto */
+}
+.subtheme-row.open {
+    display: table-row; /* Mostrar cuando está abierto */
+}
+
+/* Contenedor del gestor de subtemas */
+.subtheme-manager {
+    background-color: var(--pico-card-background-color);
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--pico-primary-background);
+    border-radius: var(--pico-border-radius);
+    margin: 0.5rem 0;
+}
+.subtheme-manager h5 {
+    margin-top: 0;
+    color: var(--pico-primary);
+}
+.subtheme-add-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    margin-top: 1rem;
+}

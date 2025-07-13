@@ -1,0 +1,209 @@
+<button type="button" class="cerrar" title="Cerrar">&times;</button>
+<h1 class="titulo-modal">Selecciona una tabla:</h1>
+<small>.</small>
+<select id="table-selector">
+    <option value="F_Tema">Temas</option>
+    <option value="F_Autor">Autores</option>
+    <option value="F_Tipo">Tipos</option>
+    </select>
+<hr>
+
+<div class="grid">
+    <input type="search" id="search-input" placeholder="Buscar en la tabla seleccionada...">
+    <form id="add-form" class="ajax-submit">
+        <input type="text" name="nombre" placeholder="Nombre del nuevo elemento" required>
+        <button type="submit">Agregar</button>
+    </form>
+</div>
+
+<div id="data-list-container"></div>
+
+<nav id="pagination-container"></nav>
+
+
+<script>
+(function() {
+    // --- Elementos del DOM ---
+    const tableSelector = document.getElementById('table-selector');
+    const searchInput = document.getElementById('search-input');
+    const addForm = document.getElementById('add-form');
+    const dataContainer = document.getElementById('data-list-container');
+    const paginationContainer = document.getElementById('pagination-container');
+
+    let state = { currentPage: 1, currentTable: 'F_Tema', currentSearch: '' };
+
+    // --- Función Principal para Cargar Datos ---
+    async function fetchData() {
+        state.currentTable = tableSelector.value;
+        state.currentSearch = searchInput.value;
+        const url = `/api/manage_data/${state.currentTable}?page=${state.currentPage}&search=${state.currentSearch}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            renderData(data.items);
+            renderPagination(data.pagination);
+        } catch (error) { dataContainer.innerHTML = `<p>Error al cargar los datos.</p>`; }
+    }
+
+    // --- Funciones para Renderizar HTML ---
+    function renderData(items) {
+       if (items.length === 0) {
+            dataContainer.innerHTML = '<table><tbody><tr><td>No se encontraron elementos.</td></tr></tbody></table>';
+            return;
+        }
+        let tableHTML = '<table><thead><tr><th>Nombre</th><th style="width: 120px;">Acciones</th></tr></thead><tbody>';
+        items.forEach(item => {
+            const isTema = state.currentTable === 'F_Tema';
+            tableHTML += `
+                <tr data-id="${item.X}">
+                    <td><span class="item-name">${item.Nombre}</span></td>
+                    <td>
+                        <div class="edit-buttons">
+                            ${isTema ? `<button class="icon-button subtheme-toggle-btn" title="Gestionar Subtemas" data-theme-id="${item.X}"><i data-lucide="list-tree"></i></button>` : ''}
+                            <button class="icon-button edit-btn" title="Editar"><i data-lucide="edit"></i></button>
+                            <form action="/manage/delete/${state.currentTable}/${item.X}" class="ajax-submit" onsubmit="return confirm('¿Seguro?');">
+                                <button type="submit" class="icon-button" title="Eliminar"><i data-lucide="trash-2"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                ${isTema ? `<tr class="subtheme-row" id="subtheme-manager-for-${item.X}"><td colspan="2"></td></tr>` : ''}
+            `;
+        });
+        tableHTML += '</tbody></table>';
+        dataContainer.innerHTML = tableHTML;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function renderPagination(p) {
+        if (p.total_pages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+        let html = '<ul>';
+        if (p.page > 1) html += `<li><a href="#" class="page-link" data-page="${p.page - 1}">‹</a></li>`;
+        for (let i = 1; i <= p.total_pages; i++) {
+            html += `<li><a href="#" class="page-link ${i === p.page ? 'current' : ''}" data-page="${i}">${i}</a></li>`;
+        }
+        if (p.page < p.total_pages) html += `<li><a href="#" class="page-link" data-page="${p.page + 1}">›</a></li>`;
+        html += '</ul>';
+        paginationContainer.innerHTML = html;
+    }
+
+    async function renderSubthemeManager(themeId, container) {
+        container.innerHTML = '<div>Cargando subtemas...</div>';
+        try {
+            const response = await fetch(`/api/subtemas/${themeId}`);
+            const subtemas = await response.json();
+            let subthemeHTML = `
+                <div class="subtheme-manager">
+                    <h5>Subtemas de este tema</h5>
+                    <ul class="lookup-list">`;
+            
+            if (subtemas.length > 0) {
+                subtemas.forEach(s => {
+                    subthemeHTML += `
+                        <li>
+                            <span>${s.Nombre}</span>
+                            <form action="/manage/delete_subtema/${s.X}" class="ajax-submit" onsubmit="return confirm('¿Seguro?');">
+                                <button type="submit" class="icon-button" title="Eliminar Subtema"><i data-lucide="trash-2"></i></button>
+                            </form>
+                        </li>`;
+                });
+            } else {
+                subthemeHTML += `<li>No hay subtemas.</li>`;
+            }
+
+            subthemeHTML += `</ul><hr>
+                <form action="/manage/add_subtema" class="ajax-submit subtheme-add-form">
+                    <input type="hidden" name="tema_id" value="${themeId}">
+                    <input type="text" name="nombre" placeholder="Nuevo subtema" required>
+                    <button type="submit">Agregar Subtema</button>
+                </form>
+            </div>`;
+            container.innerHTML = subthemeHTML;
+            if (window.lucide) lucide.createIcons();
+        } catch (error) {
+            container.innerHTML = '<div>Error al cargar subtemas.</div>';
+        }
+    }
+
+    // --- Manejo de Eventos ---
+    tableSelector.addEventListener('change', () => { state.currentPage = 1; fetchData(); });
+    searchInput.addEventListener('input', () => { state.currentPage = 1; fetchData(); });
+    
+    addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const addInput = addForm.querySelector('input[name="nombre"]');
+        const url = `/manage/add/${currentTable}`;
+        try {
+            const response = await fetch(url, { method: 'POST', body: new FormData(addForm) });
+            const result = await response.json();
+            if (result.success) {
+                addInput.value = ''; // Limpiar input
+                fetchData(); // Refrescar lista
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } catch (error) { console.error('Error al agregar:', error); }
+    });
+
+    dataContainer.addEventListener('click', async (e) => {
+        
+        const editBtn = e.target.closest('.edit-btn');
+        const toggleBtn = e.target.closest('.subtheme-toggle-btn');
+
+        if (editBtn) {
+            const row = editBtn.closest('tr');
+            const id = row.dataset.id;
+            const span = row.querySelector('.item-name');
+            const currentName = span.textContent;
+            
+            const newName = prompt('Editar nombre:', currentName);
+            if (newName && newName.trim() !== currentName) {
+                const formData = new FormData();
+                formData.append('nombre', newName.trim());
+                fetch(`/manage/update/${currentTable}/${id}`, { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) fetchData();
+                        else alert('Error: ' + result.message);
+                    });
+            }
+        }
+        if (toggleBtn) {
+            e.preventDefault();
+            const themeId = toggleBtn.dataset.themeId;
+            const managerRow = document.getElementById(`subtheme-manager-for-${themeId}`);
+            const managerCell = managerRow.querySelector('td');
+
+            // Si ya está abierto, ciérralo. Si no, ábrelo y carga los datos.
+            if (managerRow.classList.contains('open')) {
+                managerRow.classList.remove('open');
+                managerCell.innerHTML = '';
+            } else {
+                // Cierra cualquier otro que esté abierto
+                document.querySelectorAll('.subtheme-row.open').forEach(row => {
+                    row.classList.remove('open');
+                    row.querySelector('td').innerHTML = '';
+                });
+                managerRow.classList.add('open');
+                await renderSubthemeManager(themeId, managerCell);
+            }
+        }
+    });
+
+    paginationContainer.addEventListener('click', (e) => {
+        e.preventDefault();
+        const pageLink = e.target.closest('.page-link');
+        if (pageLink) {
+            currentPage = parseInt(pageLink.dataset.page, 10);
+            fetchData();
+        }
+    });
+
+    // --- Carga Inicial ---
+    fetchData();
+
+})();
+</script>

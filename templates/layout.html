@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Frases{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+    <h1 class="titulo">Frases</h1>
+    {% if session.logged_in %}
+        {% if session['user_role'] == 'admin' %}
+            <nav class="header-nav">
+                <ul>
+                    <li><a href="#" class="modal-trigger" data-url="{{ url_for('new_frase_content') }}" title="Agregar Frase" data-tooltip="Agregar Frase"><i data-lucide="plus-circle"></i></a></li>
+                    <li><a href="#" class="modal-trigger" data-url="{{ url_for('manage_content') }}" title="Gestionar Tablas" data-tooltip="Gestionar Tablas"><i data-lucide="list-plus"></i></a></li>
+                </ul>
+            </nav>
+        {% endif %}
+    {% endif %} 
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% set color_map = {'danger': 'var(--pico-color-red-500)', 'success': 'var(--pico-color-green-500)', 'info': 'var(--pico-color-blue-500)'} %}
+                    <article class="alerta" style="border-left-color: {{ color_map.get(category, 'var(--pico-muted-border-color)') }};">
+                        {{ message }}
+                    </article>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container">
+        <small>Expresiones sentenciosas &copy; 2025</small>
+    </footer>
+
+    <div id="main-modal" class="modal">
+        <div class="modal-content"></div>
+    </div>
+
+    {% block scripts %}
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("El script principal del layout se ha cargado y ejecutado.");
+
+// Función para preparar y generar el canvas de la imagen
+async function generateImageCanvas(cardElement) {
+    const frase = cardElement.dataset.frase;
+    const autor = cardElement.dataset.autor;
+    const esDivertido = cardElement.dataset.divertido === 'SI';
+
+    const template = document.getElementById('image-render-template');
+    template.querySelector('.frase-render').innerText = `“${frase}”`;
+    template.querySelector('.autor-render').innerText = `— ${autor}`;
+    
+    // Aplicar color de fondo condicional
+    template.style.backgroundColor = esDivertido ? 'hsl(55, 100%, 90%)' : 'hsl(200, 100%, 90%)';
+
+    // Usar html2canvas para crear la imagen
+    return await html2canvas(template, { scale: 2 }); // scale: 2 para mayor resolución
+}
+
+        const mainModal = document.getElementById('main-modal');
+        if (!mainModal) {
+            console.error("Error Crítico: No se encontró <div id='main-modal'> en la página.");
+            return;
+        }
+        const modalContent = mainModal.querySelector('.modal-content');
+
+        const openModal = () => { mainModal.classList.add('visible'); lucide.createIcons(); };
+        const closeModal = () => { mainModal.classList.remove('visible'); setTimeout(() => { modalContent.innerHTML = ''; }, 300); };
+
+        const activateLogicFor = (container) => {
+            // Activate AJAX forms
+            container.querySelectorAll('form.ajax-submit').forEach(form => {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    try {
+                        const response = await fetch(form.action, { method: form.method || 'POST', body: new FormData(form) });
+                        const result = await response.json();
+                        if (result.success) {
+                            if (result.reload) { // Check if a reload is requested
+                                location.reload();
+                            } else if (result.callback) { // Check for a callback function
+                                window[result.callback](result.data); // e.g., call a function to refresh a list
+                            }
+                        } else {
+                            alert('Error: ' + (result.message || 'Ocurrió un problema.'));
+                        }
+                    } catch (error) { console.error('Error de red:', error); alert('Error de conexión.'); }
+                });
+            });
+
+            // Activate dependent dropdowns
+            container.querySelectorAll('[data-parent-dropdown]').forEach(parent => {
+                const childSelector = parent.dataset.childDropdown;
+                const child = container.querySelector(childSelector);
+                const apiUrl = parent.dataset.apiUrl;
+                if (child && apiUrl) {
+                    parent.addEventListener('change', async () => {
+                        const parentId = parent.value;
+                        child.disabled = true;
+                        child.innerHTML = '<option value="">Cargando...</option>';
+                        if (!parentId) {
+                            child.innerHTML = '<option value="">-- Elige una opción primero --</option>';
+                            return;
+                        }
+                        try {
+                            const url = apiUrl.replace('{id}', parentId);
+                            const response = await fetch(url);
+                            const items = await response.json();
+                            child.innerHTML = '<option value="">-- Selecciona --</option>';
+                            items.forEach(item => { child.add(new Option(item.Nombre, item.X)); });
+                            child.disabled = false;
+                        } catch (error) { console.error("Error al cargar dropdown:", error); }
+                    });
+                }
+            });
+        };
+
+        const loadRemoteContent = async (url) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                modalContent.innerHTML = await response.text();
+                // Execute any scripts inside the loaded partial
+                 modalContent.querySelectorAll("script").forEach(script => {
+                    const newScript = document.createElement("script");
+                    newScript.text = script.innerText;
+                    document.body.appendChild(newScript).parentNode.removeChild(newScript);
+                });
+                activateLogicFor(modalContent);
+                openModal();
+            } catch (error) { console.error("Error al cargar contenido remoto:", error); alert("No se pudo cargar el contenido."); }
+        };
+
+        const showStaticContent = (selector) => {
+            const staticContent = document.querySelector(selector);
+            if (staticContent) {
+                modalContent.innerHTML = staticContent.innerHTML;
+                const formToReset = modalContent.querySelector('#advanced-search-form');
+                if (formToReset) formToReset.reset();
+                activateLogicFor(modalContent);
+                openModal();
+            } else { console.error(`Contenido estático no encontrado: ${selector}`); }
+        };
+        document.body.addEventListener('click', async (e) => {
+            const trigger = e.target.closest('.modal-trigger');
+            const downloadBtn = e.target.closest('.download-btn');
+            const shareBtn = e.target.closest('.share-btn');
+            const infoBtn = e.target.closest('.info-btn');
+            if (trigger) {
+                e.preventDefault();
+                const url = trigger.dataset.url;
+                const staticTarget = trigger.dataset.staticTarget;
+                if (url) loadRemoteContent(url);
+                else if (staticTarget) showStaticContent(staticTarget);
+            }
+
+            // NUEVO: Lógica para el botón de descargar
+    if (downloadBtn) {
+        e.preventDefault();
+        const card = downloadBtn.closest('.scroll-card');
+        const canvas = await generateImageCanvas(card);
+        
+        const link = document.createElement('a');
+        link.download = 'frase.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+    
+    // NUEVO: Lógica para el botón de compartir
+    if (shareBtn) {
+        e.preventDefault();
+        const card = shareBtn.closest('.scroll-card');
+        const canvas = await generateImageCanvas(card);
+
+        canvas.toBlob(async (blob) => {
+            try {
+                const file = new File([blob], 'frase.png', { type: 'image/png' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Frase Interesante',
+                        text: card.dataset.frase,
+                    });
+                } else {
+                    // Fallback para navegadores que no soportan compartir archivos
+                    alert("Tu navegador no soporta compartir archivos directamente. Descargando la imagen en su lugar.");
+                    downloadBtn.click(); // Simula un clic en el botón de descarga
+                }
+            } catch (error) {
+                console.error('Error al compartir:', error);
+                alert("No se pudo compartir la imagen.");
+            }
+        }, 'image/png');
+    }
+
+    // NUEVO: Lógica para el botón de información
+    if (infoBtn) {
+        e.preventDefault();
+        const card = infoBtn.closest('.scroll-card');
+        const infoContent = card.querySelector('.info-content');
+        if (infoContent) {
+            infoContent.classList.toggle('visible');
+        }
+    }
+
+            if (e.target.closest('.cerrar') || e.target === mainModal) {
+                closeModal();
+            }
+        });
+
+        lucide.createIcons();
+        activateLogicFor(document.body);
+    });
+    </script>
+    {% endblock %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>
